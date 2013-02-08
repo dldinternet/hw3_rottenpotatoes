@@ -31,12 +31,22 @@ Scenario: restrict to movies with 'PG' or 'R' ratings
   	# enter step to "submit" the search form on the homepage
   	And I click the "Refresh" button
   	# enter step(s) to ensure that PG and R movies are visible
-  	Then I should see 'PG' and 'R' rated movies
+  	Then I should be on the RottenPotatoes home page
+  	And I should see 'PG' and 'R' rated movies
   	# enter step(s) to ensure that other movies are not visible
   	And I should not see 'G','PG-13' and 'NC-17' rated movies
 
 Scenario: no ratings selected
-  # see assignment
+	# see assignment
+	Given  I am on the RottenPotatoes home page
+	When no ratings selected
+  	Then I should be on the RottenPotatoes home page
+	And I should see all of the movies
 
 Scenario: all ratings selected
   # see assignment
+	Given  I am on the RottenPotatoes home page
+	When all ratings selected
+  	Then I should be on the RottenPotatoes home page
+	And I should see all of the movies
+  

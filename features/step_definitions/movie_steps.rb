@@ -47,7 +47,7 @@ When /^I (un)?check the (.*) checkboxes?$/ do |uncheck, list|
 end
 
 When /^I check only the (.*) checkboxes?$/ do |list|
-  step 'I uncheck all the ratings checkboxes' 
+  step 'I uncheck all the ratings checkboxes'
   @list = list.gsub(/(\s|and|or)/,',').gsub(/['"]/,'').gsub(/,+/,',')
   checks = @list.split(/,/)
   step "I check the following ratings: #{@list}"
@@ -55,31 +55,72 @@ end
 
 When /^(?:|I )(press|click) the "([^"]*)" button/ do |press,button|
   #puts "''#{press}' '#{button}'"
-  step %Q{I press "#{button}"} 
+  step %Q{I press "#{button}"}
 end
 
 Then /^I should (not )?see (.*) rated movies$/ do |neg,rating_list|
+  step "the following checkboxes should #{neg}be checked: #{rating_list}"
   step "I should #{neg}see movies with the following ratings: #{rating_list}"
 end
 
 Then /^I should (not |)see movies with the following ratings: *(.*)$/ do |neg,rating_list|
-  @list = rating_list.gsub(/(\s|and|or)/,',').gsub(/['"]/,'').gsub(/,+/,',').split(/,/)
-  #puts "list '#{@list}' neg '#{neg}'"
-  @found = {}
-  html = Nokogiri::HTML(page.body)
-  movies = html.css('table#movies tbody')
-  movies.children.each do |row|
-    fields = row.children
-    name = fields[0].children[0]
-    rate = fields[2].children[0]
-    date = fields[4].children[0]
-    link = fields[6].children[0]
-    #puts "'#{name}' '#{rate.to_s}' '#{date}'"
-    #puts "#{@list.include?(rate.to_s)} '#{rate.to_s}'"
-    @found[rate.to_s] = 1 if @list.include?(rate.to_s)
+  ratings = rating_list.gsub(/(\s|and|or)/,',').gsub(/['"]/,'').gsub(/,+/,',').split(/,/)
+  Movie.all_ratings().each do |checkbox|
+    regexp = /^#{checkbox}$/
+    if ratings.include? checkbox
+      if neg.empty?
+        if page.respond_to? :should
+          page.should have_xpath('//td', :text => regexp)
+        else
+          assert page.has_xpath?('//td', :text => regexp)
+        end
+      else
+        if page.respond_to? :should_not
+          page.should have_no_xpath('//td', :text => regexp)
+        else
+          assert page.has_no_xpath?('//td', :text => regexp)
+        end
+      end
+    else
+      if neg.empty?
+        if page.respond_to? :should
+          page.should have_no_xpath('//td', :text => regexp)
+        else
+          assert page.has_no_xpath?('//td', :text => regexp)
+        end
+      else
+        if page.respond_to? :should
+          page.should have_xpath('//td', :text => regexp)
+        else
+          assert page.has_xpath?('//td', :text => regexp)
+        end
+      end
+    end
   end
-  #puts "found '#{@found.keys}' #{@found.keys.count}"
-  ok = false
-  #debugger
-  ( ( (@found.keys.count > 0) && neg.empty? ) || ( (not neg.empty?) && (@found.keys.count == 0) ) ).should  == true 
+end
+
+Then /^I should see all of the movies/ do
+  movie_count = Movie.all.count
+  #puts "I count #{movie_count} movies"
+  row_count = page.all('tbody/tr').count
+  row_count.should == movie_count
+end
+
+When /(all|no) ratings selected/ do |all|
+  #handler = all ? check : uncheck
+  Movie.all_ratings.each do |rate|
+    case 'all'
+    when'all' then check 'ratings_' + rate
+    else uncheck 'ratings_' + rate
+    end
+  end
+
+  click_button('ratings_submit')
+end
+
+And /^the following checkboxes should (not )?be checked: (.*)$/ do |un, rating_list|
+  # We have captured the ratings that we want displayed
+  rating_list.to_s.gsub(/\sand/,',').gsub(/\s/, "").gsub(/['"']/,'').split(",").each do |r|
+    step %Q{the "ratings_#{r}" checkbox should #{un}be checked}
+  end
 end
